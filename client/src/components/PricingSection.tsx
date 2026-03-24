@@ -13,7 +13,7 @@ const ANNUAL_DISCOUNT = 0.33;
 export function PricingSection() {
   const [selectedStates, setSelectedStates] = useState<Set<string>>(new Set());
   const [allStates, setAllStates] = useState(false);
-  const [annual, setAnnual] = useState(false);
+  const [annual, setAnnual] = useState(true);
 
   const toggleState = (abbrev: string) => {
     if (allStates) return;
@@ -59,7 +59,7 @@ export function PricingSection() {
           data-testid="billing-toggle"
           aria-label="Toggle annual billing"
         >
-          <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${annual ? "translate-x-7.5" : "translate-x-0.5"}`} />
+          <div className="absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200" style={{ transform: annual ? 'translateX(30px)' : 'translateX(2px)' }} />
         </button>
         <span className={`text-sm font-medium ${annual ? "text-gray-900" : "text-gray-400"}`}>Annual</span>
         {annual && (
