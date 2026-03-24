@@ -54,7 +54,7 @@ export default function Landing() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
               <Database className="w-4 h-4 text-white" />
             </div>
-            <span className="text-lg font-semibold tracking-tight text-gray-900" data-testid="brand-name">NewBizData</span>
+            <span className="text-lg font-semibold tracking-tight text-gray-900" data-testid="brand-name">EveryNewCustomer</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-gray-600">
             <button onClick={() => scrollTo("features")} className="hover:text-gray-900 transition-colors">Features</button>
@@ -387,10 +387,10 @@ export default function Landing() {
               <div className="w-7 h-7 rounded-md bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
                 <Database className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="text-sm font-semibold text-gray-900">NewBizData</span>
+              <span className="text-sm font-semibold text-gray-900">EveryNewCustomer</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-400">
-              <span>&copy; {new Date().getFullYear()} NewBizData. All rights reserved.</span>
+              <span>&copy; {new Date().getFullYear()} EveryNewCustomer. All rights reserved.</span>
             </div>
           </div>
           <div className="mt-6 text-center">

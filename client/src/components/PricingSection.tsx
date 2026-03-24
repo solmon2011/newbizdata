@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Plus, ArrowRight, Lock, Zap } from "lucide-react";
+import { Check, Plus, ArrowRight, Lock, Zap, Loader2 } from "lucide-react";
 import { states, liveStates, inProgressStates, type StateInfo } from "@/lib/stateData";
+import { apiRequest } from "@/lib/queryClient";
 
 const BASE_PRICE = 99;
 const ADDON_PRICE = 39;
@@ -14,6 +15,23 @@ export function PricingSection() {
   const [selectedStates, setSelectedStates] = useState<Set<string>>(new Set());
   const [allStates, setAllStates] = useState(false);
   const [annual, setAnnual] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const handleCheckout = async () => {
+    setCheckoutLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/checkout", {
+        states: Array.from(selectedStates),
+        annual,
+        allStates,
+      });
+      const { url } = await res.json();
+      window.location.href = url;
+    } catch (err) {
+      console.error("Checkout failed:", err);
+      setCheckoutLoading(false);
+    }
+  };
 
   const toggleState = (abbrev: string) => {
     if (allStates) return;
@@ -240,10 +258,18 @@ export function PricingSection() {
               size="lg"
               className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-10 h-13 text-base font-semibold shadow-lg shadow-emerald-200/50"
               data-testid="pricing-cta"
+              onClick={handleCheckout}
+              disabled={checkoutLoading}
             >
-              Get Started — ${effectiveMonthly}/mo
-              {annual && <span className="text-emerald-200 ml-1.5 text-sm font-normal">billed annually</span>}
-              <ArrowRight className="ml-2 w-4 h-4" />
+              {checkoutLoading ? (
+                <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Redirecting to checkout…</>
+              ) : (
+                <>
+                  Get Started — ${effectiveMonthly}/mo
+                  {annual && <span className="text-emerald-200 ml-1.5 text-sm font-normal">billed annually</span>}
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </>
+              )}
             </Button>
             <p className="text-sm text-gray-400 mt-3">
               {annual ? `$${annualTotal.toLocaleString()} billed annually. Cancel anytime.` : "Cancel anytime. No contracts."}

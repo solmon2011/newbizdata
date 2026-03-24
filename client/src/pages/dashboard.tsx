@@ -182,7 +182,7 @@ export default function Dashboard() {
                 <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
                   <Building2 className="w-4.5 h-4.5 text-white" />
                 </div>
-                <span className="font-semibold text-gray-900 text-base">NewBizData</span>
+                <span className="font-semibold text-gray-900 text-base">EveryNewCustomer</span>
               </span>
             </Link>
             <span className="hidden sm:inline text-xs text-gray-400 font-medium ml-2">Database Explorer</span>

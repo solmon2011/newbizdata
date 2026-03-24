@@ -23,7 +23,9 @@ export interface IStorage {
   // Subscriptions
   getSubscriptionsByUser(userId: number): Subscription[];
   getActiveStatesByUser(userId: number): string[];
+  getSubscriptionsByStripeId(stripeSubscriptionId: string): Subscription[];
   createSubscription(sub: InsertSubscription): Subscription;
+  updateSubscriptionStatus(id: number, status: string): void;
 
   // Entities
   queryEntities(query: EntityQuery, allowedStates?: string[]): { data: Entity[]; total: number };
@@ -68,8 +70,21 @@ export class DatabaseStorage implements IStorage {
     return rows.map(r => r.state);
   }
 
+  getSubscriptionsByStripeId(stripeSubscriptionId: string): Subscription[] {
+    return db.select().from(subscriptions)
+      .where(eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId))
+      .all();
+  }
+
   createSubscription(sub: InsertSubscription): Subscription {
     return db.insert(subscriptions).values(sub).returning().get();
+  }
+
+  updateSubscriptionStatus(id: number, status: string): void {
+    db.update(subscriptions)
+      .set({ status })
+      .where(eq(subscriptions.id, id))
+      .run();
   }
 
   // ── Entities ───────────────────────────────────────
