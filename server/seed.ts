@@ -66,8 +66,12 @@ function normalizeEntityType(raw: string | undefined | null): string | null {
 function normalizeDate(raw: string | undefined | null): string | null {
   if (!raw) return null;
   // Handle ISO dates like 2026-03-22T00:00:00.000
-  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
-  return match ? match[1] : raw;
+  const isoMatch = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoMatch) return isoMatch[1];
+  // Handle MM/DD/YYYY format
+  const usMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (usMatch) return `${usMatch[3]}-${usMatch[1].padStart(2, '0')}-${usMatch[2].padStart(2, '0')}`;
+  return raw;
 }
 
 // ── State parsers ──────────────────────────────────────
@@ -211,6 +215,91 @@ function parseIA(data: any[]): NormalizedEntity[] {
   }));
 }
 
+function parseCA(data: any[]): NormalizedEntity[] {
+  return data.map(r => ({
+    sourceId: r.entity_number || null,
+    name: r.entity_name || "",
+    entityType: normalizeEntityType(r.entity_type),
+    state: "CA",
+    filingDate: normalizeDate(r.filing_date),
+    city: null,
+    county: null,
+    zipCode: null,
+    address: r.address || null,
+    contactName: r.agent || null,
+    email: null,
+    phone: null,
+    naicsCode: null,
+    status: r.status || null,
+    jurisdiction: r.jurisdiction || null,
+  }));
+}
+
+function parseWA(data: any[]): NormalizedEntity[] {
+  return data.map(r => ({
+    sourceId: r.ubi_number || null,
+    name: r.business_name || "",
+    entityType: normalizeEntityType(r.entity_type),
+    state: "WA",
+    filingDate: null,
+    city: r.city || null,
+    county: null,
+    zipCode: r.zip || null,
+    address: r.address || null,
+    contactName: r.agent_name || null,
+    email: null,
+    phone: null,
+    naicsCode: null,
+    status: r.status || null,
+    jurisdiction: null,
+  }));
+}
+
+function parseAZ(data: any[]): NormalizedEntity[] {
+  return data.map(r => ({
+    sourceId: r.file_number || null,
+    name: r.entity_name || "",
+    entityType: normalizeEntityType(r.entity_type),
+    state: "AZ",
+    filingDate: normalizeDate(r.filing_date),
+    city: r.city || null,
+    county: null,
+    zipCode: r.zip || null,
+    address: r.address || null,
+    contactName: r.agent_name || null,
+    email: null,
+    phone: null,
+    naicsCode: null,
+    status: r.status || null,
+    jurisdiction: null,
+  }));
+}
+
+function parseLA(data: any[]): NormalizedEntity[] {
+  return data.map(r => {
+    const agentInfo = Array.isArray(r.agent_info) ? r.agent_info[0] : r.agent_info;
+    // Extract contact name from agent info (e.g., "RUDY ANDERSON 922 BURR STREET...")
+    const agentName = agentInfo ? agentInfo.split(/\d/)[0].trim() : null;
+    return {
+      sourceId: r.charter_number || null,
+      name: r.business_name || "",
+      entityType: normalizeEntityType(r.entity_type),
+      state: "LA",
+      filingDate: normalizeDate(r.filing_date),
+      city: null,
+      county: null,
+      zipCode: null,
+      address: r.address || null,
+      contactName: agentName || null,
+      email: null,
+      phone: null,
+      naicsCode: null,
+      status: r.status || null,
+      jurisdiction: null,
+    };
+  });
+}
+
 // ── Main ───────────────────────────────────────────────
 async function seed() {
   console.log("Creating tables...");
@@ -268,6 +357,10 @@ async function seed() {
     { file: "tx_raw.json", parser: parseTX, label: "TX" },
     { file: "or_raw.json", parser: parseOR, label: "OR" },
     { file: "ia_raw.json", parser: parseIA, label: "IA" },
+    { file: "ca_raw.json", parser: parseCA, label: "CA" },
+    { file: "wa_raw.json", parser: parseWA, label: "WA" },
+    { file: "az_raw.json", parser: parseAZ, label: "AZ" },
+    { file: "la_raw.json", parser: parseLA, label: "LA" },
   ];
 
   let totalInserted = 0;
@@ -288,8 +381,8 @@ async function seed() {
     const normalized = parser(raw).filter(e => e.name && e.name.trim().length > 0);
     console.log(`  ${label}: ${normalized.length} entities`);
 
-    // Insert in chunks
-    const CHUNK = 500;
+    // Insert in chunks (SQLite has a max of ~32766 params, 15 cols per row = 200 rows max)
+    const CHUNK = 200;
     for (let i = 0; i < normalized.length; i += CHUNK) {
       db.insert(entities).values(normalized.slice(i, i + CHUNK)).run();
     }

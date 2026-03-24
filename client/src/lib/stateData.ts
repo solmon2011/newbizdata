@@ -13,13 +13,13 @@ export const states: StateInfo[] = [
   { name: "Colorado", abbrev: "CO", tier: "live", records: "13,600+" },
   { name: "Connecticut", abbrev: "CT", tier: "live", records: "4,000+" },
   { name: "Oregon", abbrev: "OR", tier: "live", records: "13,800+" },
-  { name: "California", abbrev: "CA", tier: "live", records: "Coming soon" },
-  { name: "Washington", abbrev: "WA", tier: "live", records: "Coming soon" },
+  { name: "California", abbrev: "CA", tier: "live", records: "320+" },
+  { name: "Washington", abbrev: "WA", tier: "live", records: "15,000+" },
   { name: "Texas", abbrev: "TX", tier: "live", records: "12,000+" },
   { name: "Florida", abbrev: "FL", tier: "live", records: "53,400+" },
-  { name: "Arizona", abbrev: "AZ", tier: "live", records: "Coming soon" },
-  { name: "Iowa", abbrev: "IA", tier: "live", records: "50+" },
-  { name: "Louisiana", abbrev: "LA", tier: "live", records: "Coming soon" },
+  { name: "Arizona", abbrev: "AZ", tier: "live", records: "275+" },
+  { name: "Iowa", abbrev: "IA", tier: "live", records: "10,000+" },
+  { name: "Louisiana", abbrev: "LA", tier: "live", records: "220+" },
   
   // 15 In Progress
   { name: "Alaska", abbrev: "AK", tier: "in_progress" },

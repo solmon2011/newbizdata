@@ -14,7 +14,7 @@ import { USMap } from "@/components/USMap";
 import { PricingSection } from "@/components/PricingSection";
 import { PerplexityAttribution } from "@/components/PerplexityAttribution";
 
-const LIVE_COUNT = "115,000+";
+const LIVE_COUNT = "140,000+";
 const STAT_STATES = "11";
 const STAT_CONTACT_RATE = "50%+";
 const STAT_UPDATE = "Weekly";
@@ -123,7 +123,7 @@ export default function Landing() {
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6" data-testid="hero-stats">
               {[
-                { value: <CountUp target={115000} suffix="+" />, label: "Entities Tracked" },
+                { value: <CountUp target={140000} suffix="+" />, label: "Entities Tracked" },
                 { value: STAT_STATES, label: "States Live" },
                 { value: STAT_CONTACT_RATE, label: "With Contact Info" },
                 { value: STAT_UPDATE, label: "Update Frequency" },
