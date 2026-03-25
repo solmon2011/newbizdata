@@ -1,10 +1,11 @@
 import Stripe from "stripe";
 
-if (!process.env.STRIPE_SECRET_KEY) {
+const hasStripeKey = !!process.env.STRIPE_SECRET_KEY;
+if (!hasStripeKey) {
   console.warn("STRIPE_SECRET_KEY not set — Stripe features will be disabled");
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+export const stripe = hasStripeKey ? new Stripe(process.env.STRIPE_SECRET_KEY!) : null as any;
 
 // Map of tier+interval to Stripe price IDs, populated on startup
 export const priceIds: Record<string, string> = {};

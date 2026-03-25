@@ -47,6 +47,7 @@ export const entities = sqliteTable("entities", {
   naicsCode: text("naics_code"),
   status: text("status"),                   // Active, Good Standing, etc.
   jurisdiction: text("jurisdiction"),
+  isCorporateRa: integer("is_corporate_ra").default(0), // 1 = corporate registered agent, not owner
 });
 
 export const insertEntitySchema = createInsertSchema(entities).omit({ id: true });
@@ -58,6 +59,7 @@ export const entityQuerySchema = z.object({
   search: z.string().optional(),
   state: z.string().optional(),
   entityType: z.string().optional(),
+  excludeRa: z.enum(["true", "false"]).optional(),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(25),
   sortBy: z.enum(["name", "filingDate", "city", "state", "entityType"]).default("filingDate"),

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Search, Download, Filter, ChevronDown, ChevronUp, ArrowUpDown, Mail, Phone, Building2, MapPin, Calendar, X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Search, Download, Filter, ChevronDown, ChevronUp, ArrowUpDown, Mail, Phone, Building2, MapPin, Calendar, X, ChevronLeft, ChevronRight, Loader2, UserCheck, ShieldAlert } from "lucide-react";
 import type { Entity } from "@shared/schema";
 
 type SortField = "name" | "filingDate" | "city" | "state" | "entityType";
@@ -60,6 +60,7 @@ export default function Dashboard() {
   const [stateFilter, setStateFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [excludeRa, setExcludeRa] = useState(false);
   const [sortBy, setSortBy] = useState<SortField>("filingDate");
   const [sortOrder, setSortOrder] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
@@ -69,7 +70,7 @@ export default function Dashboard() {
   const debouncedSearch = useDebounce(search, 300);
 
   // ── Fetch stats ────────────────────────────────────
-  const { data: stats } = useQuery<{ total: number; states: number; withContact: number }>({
+  const { data: stats } = useQuery<{ total: number; states: number; withContact: number; corporateRa: number; ownerContacts: number }>({
     queryKey: ["/api/stats"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/stats");
@@ -96,6 +97,7 @@ export default function Dashboard() {
   if (debouncedSearch) queryParams.set("search", debouncedSearch);
   if (stateFilter) queryParams.set("state", stateFilter);
   if (typeFilter) queryParams.set("entityType", typeFilter);
+  if (excludeRa) queryParams.set("excludeRa", "true");
 
   const { data: entityResult, isLoading } = useQuery<{
     data: Entity[];
@@ -104,7 +106,7 @@ export default function Dashboard() {
     limit: number;
     totalPages: number;
   }>({
-    queryKey: ["/api/entities", debouncedSearch, stateFilter, typeFilter, page, sortBy, sortOrder],
+    queryKey: ["/api/entities", debouncedSearch, stateFilter, typeFilter, excludeRa, page, sortBy, sortOrder],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/entities?${queryParams.toString()}`);
       return res.json();
@@ -116,7 +118,7 @@ export default function Dashboard() {
   const totalPages = entityResult?.totalPages ?? 1;
 
   // Reset page when filters change
-  useEffect(() => { setPage(1); }, [debouncedSearch, stateFilter, typeFilter]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, stateFilter, typeFilter, excludeRa]);
 
   const toggleSort = (field: SortField) => {
     if (sortBy === field) {
@@ -207,7 +209,7 @@ export default function Dashboard() {
         <div className="flex flex-wrap gap-3 mb-5">
           <StatBadge label="Total Entities" value={stats ? stats.total.toLocaleString() : "—"} icon={Building2} />
           <StatBadge label="States Active" value={stats?.states ?? "—"} icon={MapPin} />
-          <StatBadge label="With Contact Info" value={stats ? `${contactPercent}%` : "—"} icon={Mail} />
+          <StatBadge label="Owner Contacts" value={stats ? stats.ownerContacts.toLocaleString() : "—"} icon={UserCheck} />
           <StatBadge label="Last Updated" value="Today" icon={Calendar} />
         </div>
 
@@ -227,8 +229,17 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Filter + Export buttons */}
+            {/* Filter + RA toggle + Export buttons */}
             <div className="flex gap-2">
+              <button
+                onClick={() => setExcludeRa(!excludeRa)}
+                className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg border transition-all ${excludeRa ? "bg-amber-50 border-amber-300 text-amber-700" : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"}`}
+                data-testid="ra-toggle"
+                title={excludeRa ? "Showing owner contacts only" : "Click to hide corporate registered agents"}
+              >
+                {excludeRa ? <UserCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
+                <span className="hidden sm:inline">{excludeRa ? "Owners Only" : "Hide RA"}</span>
+              </button>
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg border transition-all ${showFilters ? "bg-emerald-50 border-emerald-300 text-emerald-700" : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"}`}
@@ -362,7 +373,14 @@ export default function Dashboard() {
                       </td>
                       <td className="px-4 py-3 font-medium text-gray-700">{entity.state}</td>
                       <td className="px-4 py-3 text-gray-600">{entity.city || "—"}</td>
-                      <td className="px-4 py-3 text-gray-700">{entity.contactName || "—"}</td>
+                      <td className="px-4 py-3 text-gray-700">
+                        <span className="inline-flex items-center gap-1.5">
+                          {entity.contactName || "—"}
+                          {entity.isCorporateRa === 1 && (
+                            <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-700 rounded border border-amber-200 uppercase tracking-wider shrink-0">RA</span>
+                          )}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         {entity.email ? (
                           <a href={`mailto:${entity.email}`} onClick={e => e.stopPropagation()} className="text-emerald-600 hover:text-emerald-700 hover:underline">
@@ -459,7 +477,12 @@ export default function Dashboard() {
                 {entity.contactName && (
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-gray-500 w-16 shrink-0">Contact</span>
-                    <span className="text-gray-900 font-medium">{entity.contactName}</span>
+                    <span className="text-gray-900 font-medium inline-flex items-center gap-1.5">
+                      {entity.contactName}
+                      {entity.isCorporateRa === 1 && (
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-700 rounded border border-amber-200 uppercase tracking-wider">RA</span>
+                      )}
+                    </span>
                   </div>
                 )}
                 {entity.email && (

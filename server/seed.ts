@@ -337,13 +337,15 @@ async function seed() {
       phone TEXT,
       naics_code TEXT,
       status TEXT,
-      jurisdiction TEXT
+      jurisdiction TEXT,
+      is_corporate_ra INTEGER DEFAULT 0
     );
     CREATE INDEX IF NOT EXISTS idx_entities_state ON entities(state);
     CREATE INDEX IF NOT EXISTS idx_entities_filing_date ON entities(filing_date);
     CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name);
     CREATE INDEX IF NOT EXISTS idx_entities_city ON entities(city);
     CREATE INDEX IF NOT EXISTS idx_entities_email ON entities(email);
+    CREATE INDEX IF NOT EXISTS idx_entities_ra ON entities(is_corporate_ra);
   `);
 
   // Clear existing entity data
@@ -392,16 +394,78 @@ async function seed() {
 
   console.log(`\nDone! Inserted ${totalInserted.toLocaleString()} entities total.`);
 
+  // ── Flag corporate registered agents ────────────────
+  console.log("\nFlagging corporate registered agents...");
+  sqlite.exec(`
+    UPDATE entities SET is_corporate_ra = 1
+    WHERE contact_name IS NOT NULL AND contact_name != ''
+    AND (
+      LOWER(contact_name) LIKE '%registered agent%'
+      OR LOWER(contact_name) LIKE '%registered agents%'
+      OR LOWER(contact_name) LIKE '%corporation service%'
+      OR LOWER(contact_name) LIKE '%corporation system%'
+      OR LOWER(contact_name) LIKE '%ct corporation%'
+      OR LOWER(contact_name) LIKE '%c t corporation%'
+      OR LOWER(contact_name) LIKE '%cogency global%'
+      OR LOWER(contact_name) LIKE '%united states corp%'
+      OR LOWER(contact_name) LIKE '%zenbus%'
+      OR LOWER(contact_name) LIKE '%legalzoom%'
+      OR LOWER(contact_name) LIKE '%legal zoom%'
+      OR LOWER(contact_name) LIKE '%incorp service%'
+      OR LOWER(contact_name) LIKE '%northwest registered%'
+      OR LOWER(contact_name) LIKE '%northw%register%'
+      OR LOWER(contact_name) LIKE '%regist%agent%'
+      OR LOWER(contact_name) LIKE '%agent%regist%'
+      OR LOWER(contact_name) LIKE '%corporate service%'
+      OR LOWER(contact_name) LIKE '%republic registered%'
+      OR LOWER(contact_name) LIKE '%entity protect%'
+      OR LOWER(contact_name) LIKE '%protect ra %'
+      OR LOWER(contact_name) LIKE '%thority ra%'
+      OR LOWER(contact_name) LIKE '%ered agents inc%'
+      OR LOWER(contact_name) LIKE '%harbor compliance%'
+      OR LOWER(contact_name) LIKE '%wolters kluwer%'
+      OR LOWER(contact_name) LIKE '%paychex%'
+      OR LOWER(contact_name) LIKE '%bizfilings%'
+      OR LOWER(contact_name) LIKE '%swyft filing%'
+      OR LOWER(contact_name) LIKE '%mycompanyworks%'
+      OR LOWER(contact_name) LIKE '%vcorp%'
+      OR LOWER(contact_name) LIKE '%nrai %'
+      OR LOWER(contact_name) LIKE '%incfile%'
+      OR LOWER(contact_name) LIKE '%rocket lawyer%'
+      OR LOWER(contact_name) LIKE '%legalinc%'
+      OR LOWER(contact_name) LIKE '%iness inc. zenbus%'
+      OR LOWER(contact_name) LIKE '%ic registered agent republ%'
+      OR LOWER(contact_name) LIKE 'n/a'
+      OR LOWER(contact_name) LIKE '%csc global%'
+      OR LOWER(contact_name) LIKE '%national registered%'
+      OR LOWER(contact_name) LIKE '%incorporating services%'
+      OR LOWER(contact_name) LIKE '%the company corporation%'
+      OR LOWER(contact_name) LIKE '%parasec%'
+      OR LOWER(contact_name) LIKE '%capitol services%'
+      OR LOWER(contact_name) LIKE '%sunbiz%'
+      OR LOWER(contact_name) LIKE '%blumberg excelsior%'
+      OR LOWER(contact_name) LIKE '%harvard business%'
+      OR LOWER(contact_name) LIKE '%state corporation%'
+      OR LOWER(contact_name) LIKE '%states corporation%'
+    )
+  `);
+
+  const raCount = db.select({ count: sql<number>`count(*)` }).from(entities).where(sql`is_corporate_ra = 1`).get();
+  console.log(`  Flagged ${raCount?.count?.toLocaleString()} records as corporate RA`);
+
   // Print stats
   const total = db.select({ count: sql<number>`count(*)` }).from(entities).get();
   const withEmail = db.select({ count: sql<number>`count(*)` }).from(entities).where(sql`email IS NOT NULL AND email != ''`).get();
   const withContact = db.select({ count: sql<number>`count(*)` }).from(entities).where(sql`contact_name IS NOT NULL AND contact_name != ''`).get();
+  const ownerContacts = db.select({ count: sql<number>`count(*)` }).from(entities).where(sql`contact_name IS NOT NULL AND contact_name != '' AND is_corporate_ra = 0`).get();
   const stateCount = db.select({ count: sql<number>`count(distinct state)` }).from(entities).get();
 
   console.log(`\nStats:`);
   console.log(`  Total entities: ${total?.count?.toLocaleString()}`);
   console.log(`  With email: ${withEmail?.count?.toLocaleString()}`);
   console.log(`  With contact name: ${withContact?.count?.toLocaleString()}`);
+  console.log(`  Owner contacts (non-RA): ${ownerContacts?.count?.toLocaleString()}`);
+  console.log(`  Corporate RA contacts: ${raCount?.count?.toLocaleString()}`);
   console.log(`  States: ${stateCount?.count}`);
 }
 

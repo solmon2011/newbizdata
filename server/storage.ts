@@ -106,6 +106,11 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(entities.entityType, query.entityType));
     }
 
+    // Exclude corporate registered agents
+    if (query.excludeRa === "true") {
+      conditions.push(eq(entities.isCorporateRa, 0));
+    }
+
     // Search across multiple fields
     if (query.search) {
       const term = `%${query.search}%`;
@@ -156,7 +161,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(entities).where(eq(entities.id, id)).get();
   }
 
-  getEntityStats(allowedStates?: string[]): { total: number; states: number; withContact: number } {
+  getEntityStats(allowedStates?: string[]): { total: number; states: number; withContact: number; corporateRa: number; ownerContacts: number } {
     const where = allowedStates && allowedStates.length > 0
       ? sql`${entities.state} IN (${sql.join(allowedStates.map(s => sql`${s}`), sql`, `)})`
       : undefined;
@@ -172,10 +177,22 @@ export class DatabaseStorage implements IStorage {
       .where(where ? and(where, sql`(${entities.email} IS NOT NULL OR ${entities.contactName} IS NOT NULL)`) : sql`(${entities.email} IS NOT NULL OR ${entities.contactName} IS NOT NULL)`)
       .get();
 
+    const raRow = db.select({ count: sql<number>`count(*)` })
+      .from(entities)
+      .where(where ? and(where, eq(entities.isCorporateRa, 1)) : eq(entities.isCorporateRa, 1))
+      .get();
+
+    const ownerRow = db.select({ count: sql<number>`count(*)` })
+      .from(entities)
+      .where(where ? and(where, sql`${entities.contactName} IS NOT NULL AND ${entities.contactName} != '' AND ${entities.isCorporateRa} = 0`) : sql`contact_name IS NOT NULL AND contact_name != '' AND is_corporate_ra = 0`)
+      .get();
+
     return {
       total: totalRow?.count ?? 0,
       states: statesRow?.count ?? 0,
       withContact: contactRow?.count ?? 0,
+      corporateRa: raRow?.count ?? 0,
+      ownerContacts: ownerRow?.count ?? 0,
     };
   }
 
