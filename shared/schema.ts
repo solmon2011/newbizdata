@@ -66,3 +66,56 @@ export const entityQuerySchema = z.object({
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 export type EntityQuery = z.infer<typeof entityQuerySchema>;
+
+// ── Campaign Templates ────────────────────────────────
+export const campaignTemplates = sqliteTable("campaign_templates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category"), // insurance, accounting, real_estate, merchant_services, general, marketing
+  thumbnailUrl: text("thumbnail_url"),
+  frontHtml: text("front_html").notNull(),
+  backHtml: text("back_html").notNull(),
+  isSystem: integer("is_system").default(1), // 1 = pre-built, 0 = user-created
+  size: text("size").default("6x9"), // 4x6, 6x9, 6x11
+});
+
+export const insertCampaignTemplateSchema = createInsertSchema(campaignTemplates).omit({ id: true });
+export type InsertCampaignTemplate = z.infer<typeof insertCampaignTemplateSchema>;
+export type CampaignTemplate = typeof campaignTemplates.$inferSelect;
+
+// ── Campaigns ─────────────────────────────────────────
+export const campaigns = sqliteTable("campaigns", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  templateId: integer("template_id").notNull().references(() => campaignTemplates.id),
+  states: text("states").notNull(), // JSON array of state codes
+  entityTypes: text("entity_types"), // JSON array or null for all
+  status: text("status").notNull().default("draft"), // draft, active, paused
+  customFields: text("custom_fields").notNull(), // JSON: {company_name, phone, email, website, headline, offer, logo_url}
+  returnAddress: text("return_address").notNull(), // JSON: {name, address_line1, city, state, zip}
+  totalSent: integer("total_sent").default(0),
+  totalCost: integer("total_cost").default(0), // cents
+  createdAt: text("created_at").notNull().default("now"),
+});
+
+export const insertCampaignSchema = createInsertSchema(campaigns).omit({ id: true, totalSent: true, totalCost: true, createdAt: true });
+export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
+export type Campaign = typeof campaigns.$inferSelect;
+
+// ── Mail Pieces ───────────────────────────────────────
+export const mailPieces = sqliteTable("mail_pieces", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  campaignId: integer("campaign_id").notNull().references(() => campaigns.id),
+  entityId: integer("entity_id").notNull().references(() => entities.id),
+  lobId: text("lob_id"),
+  status: text("status").notNull().default("pending"), // pending, mailed, delivered, returned
+  costCents: integer("cost_cents"),
+  sentAt: text("sent_at"),
+  deliveredAt: text("delivered_at"),
+});
+
+export const insertMailPieceSchema = createInsertSchema(mailPieces).omit({ id: true });
+export type InsertMailPiece = z.infer<typeof insertMailPieceSchema>;
+export type MailPiece = typeof mailPieces.$inferSelect;

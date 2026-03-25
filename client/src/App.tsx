@@ -7,6 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import SuccessPage from "@/pages/success";
+import CampaignSetup from "@/pages/campaign-setup";
+import CampaignDashboard from "@/pages/campaign-dashboard";
 import NotFound from "@/pages/not-found";
 
 function AppRouter() {
@@ -15,6 +17,9 @@ function AppRouter() {
       <Route path="/" component={Landing} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/success" component={SuccessPage} />
+      <Route path="/campaign/new" component={CampaignSetup} />
+      <Route path="/campaigns/:id" component={CampaignDashboard} />
+      <Route path="/campaigns" component={CampaignDashboard} />
       <Route component={NotFound} />
     </Switch>
   );

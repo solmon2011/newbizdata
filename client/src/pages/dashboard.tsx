@@ -190,6 +190,9 @@ export default function Dashboard() {
             <span className="hidden sm:inline text-xs text-gray-400 font-medium ml-2">Database Explorer</span>
           </div>
           <div className="flex items-center gap-3">
+            <Link href="/campaigns" className="text-sm text-gray-500 hover:text-gray-900 transition-colors font-medium">
+              Campaigns
+            </Link>
             <div className="hidden sm:flex items-center gap-1.5">
               {(filters?.states ?? []).map(st => (
                 <span key={st} className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 rounded border border-emerald-200">

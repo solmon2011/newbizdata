@@ -3,10 +3,13 @@ import {
   type Subscription, type InsertSubscription, subscriptions,
   type Entity, type InsertEntity, entities,
   type EntityQuery,
+  type CampaignTemplate, type InsertCampaignTemplate, campaignTemplates,
+  type Campaign, type InsertCampaign, campaigns,
+  type MailPiece, type InsertMailPiece, mailPieces,
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
-import { eq, and, or, like, sql, asc, desc } from "drizzle-orm";
+import { eq, and, or, like, sql, asc, desc, inArray } from "drizzle-orm";
 
 const sqlite = new Database("data.db");
 sqlite.pragma("journal_mode = WAL");
@@ -34,6 +37,23 @@ export interface IStorage {
   getDistinctStates(): string[];
   getDistinctEntityTypes(): string[];
   insertEntities(batch: InsertEntity[]): void;
+
+  // Campaign Templates
+  getAllTemplates(): CampaignTemplate[];
+  getTemplateById(id: number): CampaignTemplate | undefined;
+
+  // Campaigns
+  createCampaign(campaign: InsertCampaign): Campaign;
+  getCampaigns(): Campaign[];
+  getCampaignById(id: number): Campaign | undefined;
+  updateCampaign(id: number, updates: Partial<{ name: string; status: string; customFields: string; returnAddress: string; states: string; entityTypes: string | null }>): void;
+  incrementCampaignStats(id: number, sentCount: number, costCents: number): void;
+
+  // Mail Pieces
+  createMailPiece(piece: InsertMailPiece): MailPiece;
+  getMailPiecesByCampaign(campaignId: number, page: number, limit: number): { data: MailPiece[]; total: number };
+  getMailPieceStats(campaignId: number): { total: number; pending: number; mailed: number; delivered: number; returned: number };
+  getAlreadySentEntityIds(campaignId: number): number[];
 }
 
 // ── Implementation ─────────────────────────────────────
@@ -217,6 +237,98 @@ export class DatabaseStorage implements IStorage {
     for (let i = 0; i < batch.length; i += CHUNK) {
       db.insert(entities).values(batch.slice(i, i + CHUNK)).run();
     }
+  }
+
+  // ── Campaign Templates ────────────────────────────────
+  getAllTemplates(): CampaignTemplate[] {
+    return db.select().from(campaignTemplates).all();
+  }
+
+  getTemplateById(id: number): CampaignTemplate | undefined {
+    return db.select().from(campaignTemplates).where(eq(campaignTemplates.id, id)).get();
+  }
+
+  // ── Campaigns ─────────────────────────────────────────
+  createCampaign(campaign: InsertCampaign): Campaign {
+    return db.insert(campaigns).values({
+      ...campaign,
+      createdAt: new Date().toISOString(),
+    }).returning().get();
+  }
+
+  getCampaigns(): Campaign[] {
+    return db.select().from(campaigns).orderBy(desc(campaigns.createdAt)).all();
+  }
+
+  getCampaignById(id: number): Campaign | undefined {
+    return db.select().from(campaigns).where(eq(campaigns.id, id)).get();
+  }
+
+  updateCampaign(id: number, updates: Partial<{ name: string; status: string; customFields: string; returnAddress: string; states: string; entityTypes: string | null }>): void {
+    db.update(campaigns).set(updates).where(eq(campaigns.id, id)).run();
+  }
+
+  incrementCampaignStats(id: number, sentCount: number, costCents: number): void {
+    db.update(campaigns)
+      .set({
+        totalSent: sql`${campaigns.totalSent} + ${sentCount}`,
+        totalCost: sql`${campaigns.totalCost} + ${costCents}`,
+      })
+      .where(eq(campaigns.id, id))
+      .run();
+  }
+
+  // ── Mail Pieces ───────────────────────────────────────
+  createMailPiece(piece: InsertMailPiece): MailPiece {
+    return db.insert(mailPieces).values(piece).returning().get();
+  }
+
+  getMailPiecesByCampaign(campaignId: number, page: number, limit: number): { data: MailPiece[]; total: number } {
+    const countRow = db.select({ count: sql<number>`count(*)` })
+      .from(mailPieces)
+      .where(eq(mailPieces.campaignId, campaignId))
+      .get();
+    const total = countRow?.count ?? 0;
+
+    const offset = (page - 1) * limit;
+    const data = db.select().from(mailPieces)
+      .where(eq(mailPieces.campaignId, campaignId))
+      .orderBy(desc(mailPieces.id))
+      .limit(limit)
+      .offset(offset)
+      .all();
+
+    return { data, total };
+  }
+
+  getMailPieceStats(campaignId: number): { total: number; pending: number; mailed: number; delivered: number; returned: number } {
+    const rows = db.select({
+      status: mailPieces.status,
+      count: sql<number>`count(*)`,
+    })
+      .from(mailPieces)
+      .where(eq(mailPieces.campaignId, campaignId))
+      .groupBy(mailPieces.status)
+      .all();
+
+    const stats = { total: 0, pending: 0, mailed: 0, delivered: 0, returned: 0 };
+    for (const row of rows) {
+      const count = row.count;
+      stats.total += count;
+      if (row.status === "pending") stats.pending += count;
+      else if (row.status === "mailed") stats.mailed += count;
+      else if (row.status === "delivered") stats.delivered += count;
+      else if (row.status === "returned") stats.returned += count;
+    }
+    return stats;
+  }
+
+  getAlreadySentEntityIds(campaignId: number): number[] {
+    const rows = db.select({ entityId: mailPieces.entityId })
+      .from(mailPieces)
+      .where(eq(mailPieces.campaignId, campaignId))
+      .all();
+    return rows.map(r => r.entityId);
   }
 }
 
